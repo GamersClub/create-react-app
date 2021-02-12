@@ -106,6 +106,23 @@ module.exports = function (webpackEnv) {
 
   const shouldUseReactRefresh = env.raw.FAST_REFRESH;
 
+  const getSassOptions = () => {
+    let override = null
+
+    try {
+      override = require(paths.overrideConfig)
+    } catch (e) {}
+
+    console.log({ override })
+
+    if (typeof override !== 'function') return {}
+
+    const sassOptions = override()
+    console.log({ sassOptions })
+
+    return sassOptions
+  }
+
   // common function to get style loaders
   const getStyleLoaders = (cssOptions, preProcessor) => {
     const loaders = [
@@ -148,7 +165,10 @@ module.exports = function (webpackEnv) {
         },
       },
     ].filter(Boolean);
+
     if (preProcessor) {
+      const sassOptions = preProcessor === 'sass-loader' ? getSassOptions() : {}
+
       loaders.push(
         {
           loader: require.resolve('resolve-url-loader'),
@@ -161,6 +181,7 @@ module.exports = function (webpackEnv) {
           loader: require.resolve(preProcessor),
           options: {
             sourceMap: true,
+            ...sassOptions
           },
         }
       );
