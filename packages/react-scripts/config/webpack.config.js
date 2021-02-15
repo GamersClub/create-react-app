@@ -87,6 +87,41 @@ const hasJsxRuntime = (() => {
   }
 })();
 
+const getOverrideConfigurations = () => {
+  let override = null
+
+  try {
+    override = require(paths.overrideConfig)
+  } catch (e) {
+    console.error(e)
+  }
+
+  const {
+    publicPath = '',
+    sassOptions = {},
+    miniCssExtractOptions = {
+      loader: {},
+      plugin: {}
+    },
+    styledComponentsNamespace = '',
+    htmlWebpackPluginOptions = {},
+    splitChunksOptions = {},
+    customLoaders = [],
+    customPlugins = [],
+  } = typeof override === 'function' ? override() : {}
+
+  return {
+    publicPath,
+    sassOptions,
+    miniCssExtractOptions,
+    styledComponentsNamespace,
+    htmlWebpackPluginOptions,
+    splitChunksOptions,
+    customLoaders,
+    customPlugins,
+  }
+};
+
 // This is the production and development configuration.
 // It is focused on developer experience, fast rebuilds, and a minimal bundle.
 module.exports = function (webpackEnv) {
@@ -106,34 +141,27 @@ module.exports = function (webpackEnv) {
 
   const shouldUseReactRefresh = env.raw.FAST_REFRESH;
 
-  const getSassOptions = () => {
-    let override = null
-
-    try {
-      override = require(paths.overrideConfig)
-    } catch (e) {}
-
-    console.log({ override })
-
-    if (typeof override !== 'function') return {}
-
-    const sassOptions = override()
-    console.log({ sassOptions })
-
-    return sassOptions
-  }
+  const overrideConfig = getOverrideConfigurations()
+  const isMiniCssExtractPlugin = isEnvProduction
+    || Object.keys(overrideConfig.miniCssExtractOptions.loader).length > 0
+    || Object.keys(overrideConfig.miniCssExtractOptions.plugin).length > 0
 
   // common function to get style loaders
   const getStyleLoaders = (cssOptions, preProcessor) => {
     const loaders = [
       isEnvDevelopment && require.resolve('style-loader'),
-      isEnvProduction && {
+      isMiniCssExtractPlugin && {
         loader: MiniCssExtractPlugin.loader,
         // css is located in `static/css`, use '../../' to locate index.html folder
         // in production `paths.publicUrlOrPath` can be a relative path
-        options: paths.publicUrlOrPath.startsWith('.')
-          ? { publicPath: '../../' }
-          : {},
+        options: Object.assign(
+          {
+            publicPath:
+              paths.publicUrlOrPath.startsWith('.')
+              ? '../../' : undefined
+          },
+          overrideConfig.miniCssExtractOptions.loader
+        )
       },
       {
         loader: require.resolve('css-loader'),
@@ -167,7 +195,7 @@ module.exports = function (webpackEnv) {
     ].filter(Boolean);
 
     if (preProcessor) {
-      const sassOptions = preProcessor === 'sass-loader' ? getSassOptions() : {}
+      const sassOptions = preProcessor === 'sass-loader' ? { sassOptions: overrideConfig.sassOptions } : {}
 
       loaders.push(
         {
@@ -244,7 +272,9 @@ module.exports = function (webpackEnv) {
       // webpack uses `publicPath` to determine where the app is being served from.
       // It requires a trailing slash, or the file assets will get an incorrect path.
       // We inferred the "public path" (such as / or /my-project) from homepage.
-      publicPath: paths.publicUrlOrPath,
+      publicPath: overrideConfig.publicPath
+        ? overrideConfig.publicPath
+        : paths.publicUrlOrPath,
       // Point sourcemap entries to original disk location (format as URL on Windows)
       devtoolModuleFilenameTemplate: isEnvProduction
         ? info =>
@@ -327,10 +357,10 @@ module.exports = function (webpackEnv) {
       // Automatically split vendor and commons
       // https://twitter.com/wSokra/status/969633336732905474
       // https://medium.com/webpack/webpack-4-code-splitting-chunk-graph-and-the-splitchunks-optimization-be739a861366
-      splitChunks: {
+      splitChunks: Object.assign({
         chunks: 'all',
         name: isEnvDevelopment,
-      },
+      }, overrideConfig.splitChunksOptions),
       // Keep the runtime chunk separated to enable long term caching
       // https://twitter.com/wSokra/status/969679223278505985
       // https://github.com/facebook/create-react-app/issues/5358
@@ -398,6 +428,7 @@ module.exports = function (webpackEnv) {
           // match the requirements. When no loader matches it will fall
           // back to the "file" loader at the end of the loader list.
           oneOf: [
+            ...overrideConfig.customLoaders,
             // TODO: Merge this config once `image/avif` is in the mime-db
             // https://github.com/jshttp/mime-db
             {
@@ -425,6 +456,7 @@ module.exports = function (webpackEnv) {
             {
               test: /\.(js|mjs|jsx|ts|tsx)$/,
               include: paths.appSrc,
+              exclude: [/\.styles\.ts$/],
               loader: require.resolve('babel-loader'),
               options: {
                 customize: require.resolve(
@@ -482,6 +514,32 @@ module.exports = function (webpackEnv) {
                 cacheCompression: false,
                 compact: isEnvProduction,
               },
+            },
+            {
+              test: /\.styles\.ts$/,
+              use: [
+                {
+                  loader: require.resolve('babel-loader'),
+                  options: {
+                    presets: ['@babel/preset-typescript'],
+                    plugins: [
+                      overrideConfig.styledComponentsNamespace ? [
+                        '@quickbaseoss/babel-plugin-styled-components-css-namespace',
+                        {
+                          cssNamespace: overrideConfig.styledComponentsNamespace
+                        }
+                      ] : {},
+                      [
+                        'babel-plugin-styled-components',
+                        {
+                          pure: true,
+                          fileName: false
+                        }
+                      ]
+                    ]
+                  }
+                }
+              ]
             },
             // Process any JS outside of the app with Babel.
             // Unlike the application JS, we only compile the standard ES features.
@@ -619,6 +677,7 @@ module.exports = function (webpackEnv) {
       ],
     },
     plugins: [
+      ...overrideConfig.customPlugins,
       // Generates an `index.html` file with the <script> injected.
       new HtmlWebpackPlugin(
         Object.assign(
@@ -627,6 +686,7 @@ module.exports = function (webpackEnv) {
             inject: true,
             template: paths.appHtml,
           },
+          overrideConfig.htmlWebpackPluginOptions,
           isEnvProduction
             ? {
                 minify: {
@@ -693,13 +753,18 @@ module.exports = function (webpackEnv) {
       // See https://github.com/facebook/create-react-app/issues/186
       isEnvDevelopment &&
         new WatchMissingNodeModulesPlugin(paths.appNodeModules),
-      isEnvProduction &&
-        new MiniCssExtractPlugin({
-          // Options similar to the same options in webpackOptions.output
-          // both options are optional
-          filename: 'static/css/[name].[contenthash:8].css',
-          chunkFilename: 'static/css/[name].[contenthash:8].chunk.css',
-        }),
+      isMiniCssExtractPlugin &&
+        new MiniCssExtractPlugin(
+          Object.assign(
+            {
+              // Options similar to the same options in webpackOptions.output
+              // both options are optional
+              filename: 'static/css/[name].[contenthash:8].css',
+              chunkFilename: 'static/css/[name].[contenthash:8].chunk.css',
+            },
+            overrideConfig.miniCssExtractOptions.plugin
+          )
+        ),
       // Generate an asset manifest file with the following content:
       // - "files" key: Mapping of all asset filenames to their corresponding
       //   output file so that tools can pick it up without having to parse
