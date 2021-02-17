@@ -73,6 +73,7 @@ const cssRegex = /\.css$/;
 const cssModuleRegex = /\.module\.css$/;
 const sassRegex = /\.(scss|sass)$/;
 const sassModuleRegex = /\.module\.(scss|sass)$/;
+const styledComponentRegex = /\.styles\.ts$/
 
 const hasJsxRuntime = (() => {
   if (process.env.DISABLE_NEW_JSX_TRANSFORM === 'true') {
@@ -477,7 +478,7 @@ module.exports = function (webpackEnv) {
             {
               test: /\.(js|mjs|jsx|ts|tsx)$/,
               include: paths.appSrc,
-              exclude: [/\.styles\.ts$/],
+              exclude: styledComponentRegex,
               loader: require.resolve('babel-loader'),
               options: {
                 customize: require.resolve(
@@ -537,7 +538,7 @@ module.exports = function (webpackEnv) {
               },
             },
             {
-              test: /\.styles\.ts$/,
+              test: styledComponentRegex,
               use: [
                 {
                   loader: require.resolve('babel-loader'),
