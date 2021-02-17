@@ -122,6 +122,26 @@ const getOverrideConfigurations = () => {
   }
 };
 
+const resolveTsconfigPathsToAlias = ({
+  tsconfigPath = `${paths.appPath}/tsconfig.paths.json`,
+  webpackConfigBasePath = paths.appPath,
+} = {}) => {
+  const aliases = {};
+
+  try {
+    const { paths: pathAlias } = require(tsconfigPath).compilerOptions;
+
+    Object.keys(pathAlias).forEach((item) => {
+      const key = item.replace('/*', '');
+      const value = path.resolve(webpackConfigBasePath, pathAlias[item][0].replace('/*', '').replace('*', ''));
+  
+      aliases[key] = value;
+    });
+  } finally {
+    return aliases;
+  }
+}
+
 // This is the production and development configuration.
 // It is focused on developer experience, fast rebuilds, and a minimal bundle.
 module.exports = function (webpackEnv) {
@@ -217,7 +237,7 @@ module.exports = function (webpackEnv) {
     return loaders;
   };
 
-  return {
+  const config = {
     mode: isEnvProduction ? 'production' : isEnvDevelopment && 'development',
     // Stop compilation early in production
     bail: isEnvProduction,
@@ -395,6 +415,7 @@ module.exports = function (webpackEnv) {
           'scheduler/tracing': 'scheduler/tracing-profiling',
         }),
         ...(modules.webpackAliases || {}),
+        ...(resolveTsconfigPathsToAlias())
       },
       plugins: [
         // Adds support for installing with Plug'n'Play, leading to faster installs and adding
@@ -881,4 +902,6 @@ module.exports = function (webpackEnv) {
     // our own hints via the FileSizeReporter
     performance: false,
   };
+
+  return config;
 };
