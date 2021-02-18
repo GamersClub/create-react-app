@@ -73,7 +73,6 @@ const cssRegex = /\.css$/;
 const cssModuleRegex = /\.module\.css$/;
 const sassRegex = /\.(scss|sass)$/;
 const sassModuleRegex = /\.module\.(scss|sass)$/;
-const styledComponentRegex = /\.styles\.ts$/
 
 const hasJsxRuntime = (() => {
   if (process.env.DISABLE_NEW_JSX_TRANSFORM === 'true') {
@@ -478,7 +477,6 @@ module.exports = function (webpackEnv) {
             {
               test: /\.(js|mjs|jsx|ts|tsx)$/,
               include: paths.appSrc,
-              exclude: styledComponentRegex,
               loader: require.resolve('babel-loader'),
               options: {
                 customize: require.resolve(
@@ -524,6 +522,20 @@ module.exports = function (webpackEnv) {
                       },
                     },
                   ],
+                  overrideConfig.styledComponentsNamespace ? [
+                    // For this plugin to work well, it is necessary that the project has styled-component@5.1.0 dependency
+                    '@quickbaseoss/babel-plugin-styled-components-css-namespace',
+                    {
+                      cssNamespace: overrideConfig.styledComponentsNamespace
+                    }
+                  ] : {},
+                  [
+                    'babel-plugin-styled-components',
+                    {
+                      pure: true,
+                      fileName: false
+                    }
+                  ],
                   isEnvDevelopment &&
                     shouldUseReactRefresh &&
                     require.resolve('react-refresh/babel'),
@@ -536,32 +548,6 @@ module.exports = function (webpackEnv) {
                 cacheCompression: false,
                 compact: isEnvProduction,
               },
-            },
-            {
-              test: styledComponentRegex,
-              use: [
-                {
-                  loader: require.resolve('babel-loader'),
-                  options: {
-                    presets: ['@babel/preset-typescript'],
-                    plugins: [
-                      overrideConfig.styledComponentsNamespace ? [
-                        '@quickbaseoss/babel-plugin-styled-components-css-namespace',
-                        {
-                          cssNamespace: overrideConfig.styledComponentsNamespace
-                        }
-                      ] : {},
-                      [
-                        'babel-plugin-styled-components',
-                        {
-                          pure: true,
-                          fileName: false
-                        }
-                      ]
-                    ]
-                  }
-                }
-              ]
             },
             // Process any JS outside of the app with Babel.
             // Unlike the application JS, we only compile the standard ES features.
