@@ -99,6 +99,7 @@ const getOverrideConfigurations = () => {
   const {
     publicPath = '',
     sassOptions = {},
+    sassAdditionalData,
     miniCssExtractOptions = {
       loader: {},
       plugin: {}
@@ -113,6 +114,7 @@ const getOverrideConfigurations = () => {
   return {
     publicPath,
     sassOptions,
+    sassAdditionalData,
     miniCssExtractOptions,
     styledComponentsNamespace,
     htmlWebpackPluginOptions,
@@ -215,7 +217,9 @@ module.exports = function (webpackEnv) {
     ].filter(Boolean);
 
     if (preProcessor) {
-      const sassOptions = preProcessor === 'sass-loader' ? { sassOptions: overrideConfig.sassOptions } : {}
+      const preProcessorOptions = preProcessor === 'sass-loader'
+        ? { sassOptions: overrideConfig.sassOptions, additionalData: overrideConfig.sassAdditionalData }
+        : {}
 
       loaders.push(
         {
@@ -229,7 +233,7 @@ module.exports = function (webpackEnv) {
           loader: require.resolve(preProcessor),
           options: {
             sourceMap: true,
-            ...sassOptions
+            ...preProcessorOptions
           },
         }
       );
