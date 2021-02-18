@@ -172,6 +172,7 @@ module.exports = function (webpackEnv) {
   const getStyleLoaders = (cssOptions, preProcessor) => {
     const loaders = [
       isEnvDevelopment && require.resolve('style-loader'),
+      isEnvDevelopment && shouldUseReactRefresh && require.resolve('css-hot-loader'),
       isMiniCssExtractPlugin && {
         loader: MiniCssExtractPlugin.loader,
         // css is located in `static/css`, use '../../' to locate index.html folder
