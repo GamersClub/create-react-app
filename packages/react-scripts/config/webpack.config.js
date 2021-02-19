@@ -93,7 +93,8 @@ const getOverrideConfigurations = () => {
   try {
     override = require(paths.overrideConfig)
   } catch (e) {
-    console.error(e)
+    console.log(e.message)
+    console.log('Getting default CRA configurations.')
   }
 
   const {
