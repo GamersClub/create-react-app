@@ -109,6 +109,7 @@ const getOverrideConfigurations = () => {
     styledComponentsNamespace = '',
     htmlWebpackPluginOptions = {},
     splitChunksOptions = {},
+    output = {},
     customLoaders = [],
     customPlugins = [],
   } = typeof override === 'function' ? override() : {};
@@ -121,6 +122,7 @@ const getOverrideConfigurations = () => {
     styledComponentsNamespace,
     htmlWebpackPluginOptions,
     splitChunksOptions,
+    output,
     customLoaders,
     customPlugins,
   };
@@ -329,6 +331,7 @@ module.exports = function (webpackEnv) {
       // this defaults to 'window', but by setting it to 'this' then
       // module chunks which are built will work in web workers as well.
       globalObject: 'this',
+      ...overrideConfig.output
     },
     optimization: {
       minimize: isEnvProduction,
