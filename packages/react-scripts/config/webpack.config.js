@@ -27,6 +27,7 @@ const WatchMissingNodeModulesPlugin = require('react-dev-utils/WatchMissingNodeM
 const ModuleScopePlugin = require('react-dev-utils/ModuleScopePlugin');
 const getCSSModuleLocalIdent = require('react-dev-utils/getCSSModuleLocalIdent');
 const ESLintPlugin = require('eslint-webpack-plugin');
+const GlobImporter = require('node-sass-glob-importer');
 const paths = require('./paths');
 const modules = require('./modules');
 const getClientEnvironment = require('./env');
@@ -88,13 +89,13 @@ const hasJsxRuntime = (() => {
 })();
 
 const getOverrideConfigurations = () => {
-  let override = null
+  let override = null;
 
   try {
-    override = require(paths.overrideConfig)
+    override = require(paths.overrideConfig);
   } catch (e) {
-    console.log(e.message)
-    console.log('Getting default CRA configurations.')
+    console.log(e.message);
+    console.log('Getting default CRA configurations.');
   }
 
   const {
@@ -103,14 +104,14 @@ const getOverrideConfigurations = () => {
     sassAdditionalData,
     miniCssExtractOptions = {
       loader: {},
-      plugin: {}
+      plugin: {},
     },
     styledComponentsNamespace = '',
     htmlWebpackPluginOptions = {},
     splitChunksOptions = {},
     customLoaders = [],
     customPlugins = [],
-  } = typeof override === 'function' ? override() : {}
+  } = typeof override === 'function' ? override() : {};
 
   return {
     publicPath,
@@ -122,7 +123,7 @@ const getOverrideConfigurations = () => {
     splitChunksOptions,
     customLoaders,
     customPlugins,
-  }
+  };
 };
 
 const resolveTsconfigPathsToAlias = ({
@@ -134,16 +135,19 @@ const resolveTsconfigPathsToAlias = ({
   try {
     const { paths: pathAlias } = require(tsconfigPath).compilerOptions;
 
-    Object.keys(pathAlias).forEach((item) => {
+    Object.keys(pathAlias).forEach(item => {
       const key = item.replace('/*', '');
-      const value = path.resolve(webpackConfigBasePath, pathAlias[item][0].replace('/*', '').replace('*', ''));
-  
+      const value = path.resolve(
+        webpackConfigBasePath,
+        pathAlias[item][0].replace('/*', '').replace('*', '')
+      );
+
       aliases[key] = value;
     });
   } finally {
     return aliases;
   }
-}
+};
 
 // This is the production and development configuration.
 // It is focused on developer experience, fast rebuilds, and a minimal bundle.
@@ -164,28 +168,31 @@ module.exports = function (webpackEnv) {
 
   const shouldUseReactRefresh = env.raw.FAST_REFRESH;
 
-  const overrideConfig = getOverrideConfigurations()
-  const isMiniCssExtractPlugin = isEnvProduction
-    || Object.keys(overrideConfig.miniCssExtractOptions.loader).length > 0
-    || Object.keys(overrideConfig.miniCssExtractOptions.plugin).length > 0
+  const overrideConfig = getOverrideConfigurations();
+  const isMiniCssExtractPlugin =
+    isEnvProduction ||
+    Object.keys(overrideConfig.miniCssExtractOptions.loader).length > 0 ||
+    Object.keys(overrideConfig.miniCssExtractOptions.plugin).length > 0;
 
   // common function to get style loaders
   const getStyleLoaders = (cssOptions, preProcessor) => {
     const loaders = [
       require.resolve('style-loader'),
-      isEnvDevelopment && shouldUseReactRefresh && require.resolve('css-hot-loader'),
+      isEnvDevelopment &&
+        shouldUseReactRefresh &&
+        require.resolve('css-hot-loader'),
       isMiniCssExtractPlugin && {
         loader: MiniCssExtractPlugin.loader,
         // css is located in `static/css`, use '../../' to locate index.html folder
         // in production `paths.publicUrlOrPath` can be a relative path
         options: Object.assign(
           {
-            publicPath:
-              paths.publicUrlOrPath.startsWith('.')
-              ? '../../' : undefined
+            publicPath: paths.publicUrlOrPath.startsWith('.')
+              ? '../../'
+              : undefined,
           },
           overrideConfig.miniCssExtractOptions.loader
-        )
+        ),
       },
       {
         loader: require.resolve('css-loader'),
@@ -219,9 +226,16 @@ module.exports = function (webpackEnv) {
     ].filter(Boolean);
 
     if (preProcessor) {
-      const preProcessorOptions = preProcessor === 'sass-loader'
-        ? { sassOptions: overrideConfig.sassOptions, additionalData: overrideConfig.sassAdditionalData }
-        : {}
+      const preProcessorOptions =
+        preProcessor === 'sass-loader'
+          ? {
+              sassOptions: {
+                importer: [GlobImporter()],
+                ...overrideConfig.sassOptions
+              },
+              additionalData: overrideConfig.sassAdditionalData,
+            }
+          : {};
 
       loaders.push(
         {
@@ -235,7 +249,7 @@ module.exports = function (webpackEnv) {
           loader: require.resolve(preProcessor),
           options: {
             sourceMap: true,
-            ...preProcessorOptions
+            ...preProcessorOptions,
           },
         }
       );
@@ -383,10 +397,13 @@ module.exports = function (webpackEnv) {
       // Automatically split vendor and commons
       // https://twitter.com/wSokra/status/969633336732905474
       // https://medium.com/webpack/webpack-4-code-splitting-chunk-graph-and-the-splitchunks-optimization-be739a861366
-      splitChunks: Object.assign({
-        chunks: 'all',
-        name: isEnvDevelopment,
-      }, overrideConfig.splitChunksOptions),
+      splitChunks: Object.assign(
+        {
+          chunks: 'all',
+          name: isEnvDevelopment,
+        },
+        overrideConfig.splitChunksOptions
+      ),
       // Keep the runtime chunk separated to enable long term caching
       // https://twitter.com/wSokra/status/969679223278505985
       // https://github.com/facebook/create-react-app/issues/5358
@@ -421,7 +438,7 @@ module.exports = function (webpackEnv) {
           'scheduler/tracing': 'scheduler/tracing-profiling',
         }),
         ...(modules.webpackAliases || {}),
-        ...(resolveTsconfigPathsToAlias())
+        ...resolveTsconfigPathsToAlias(),
       },
       plugins: [
         // Adds support for installing with Plug'n'Play, leading to faster installs and adding
@@ -528,19 +545,22 @@ module.exports = function (webpackEnv) {
                       },
                     },
                   ],
-                  overrideConfig.styledComponentsNamespace ? [
-                    // For this plugin to work well, it is necessary that the project has styled-component@5.1.0 dependency
-                    '@quickbaseoss/babel-plugin-styled-components-css-namespace',
-                    {
-                      cssNamespace: overrideConfig.styledComponentsNamespace
-                    }
-                  ] : {},
+                  overrideConfig.styledComponentsNamespace
+                    ? [
+                        // For this plugin to work well, it is necessary that the project has styled-component@5.1.0 dependency
+                        '@quickbaseoss/babel-plugin-styled-components-css-namespace',
+                        {
+                          cssNamespace:
+                            overrideConfig.styledComponentsNamespace,
+                        },
+                      ]
+                    : {},
                   [
                     'babel-plugin-styled-components',
                     {
                       pure: true,
-                      fileName: false
-                    }
+                      fileName: false,
+                    },
                   ],
                   isEnvDevelopment &&
                     shouldUseReactRefresh &&
