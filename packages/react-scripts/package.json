@@ -1,10 +1,10 @@
 {
-  "name": "gamersclub-react-scripts",
+  "name": "@gamersclub/react-scripts",
   "version": "4.0.2",
-  "description": "Configuration and scripts for Create React App.",
+  "description": "Gamers Club Configuration and scripts for Create React App.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/facebook/create-react-app.git",
+    "url": "https://github.com/GamersClub/create-react-app.git",
     "directory": "packages/react-scripts"
   },
   "license": "MIT",
@@ -12,7 +12,7 @@
     "node": "^10.12.0 || >=12.0.0"
   },
   "bugs": {
-    "url": "https://github.com/facebook/create-react-app/issues"
+    "url": "https://github.com/GamersClub/create-react-app/issues"
   },
   "files": [
     "bin",
@@ -67,6 +67,7 @@
     "jest-resolve": "26.6.0",
     "jest-watch-typeahead": "0.6.1",
     "mini-css-extract-plugin": "0.11.3",
+    "node-sass-glob-importer": "^5.3.2",
     "optimize-css-assets-webpack-plugin": "5.0.4",
     "pnp-webpack-plugin": "1.6.4",
     "postcss-flexbugs-fixes": "4.2.1",
